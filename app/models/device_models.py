@@ -25,7 +25,7 @@ class Device(db.Model):
 class SIMCard(db.Model):
     __tablename__ = 'sim_cards'
     
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String(20), primary_key=True)
     app_id = db.Column(db.Integer, db.ForeignKey("apps.id"), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     iccid = db.Column(db.String(20), unique=True, nullable=False)

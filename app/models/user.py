@@ -19,7 +19,13 @@ class User(db.Model):
 
     subscription_status = db.Column(db.String(20), default='Active')  # Active, Paused, Canceled
     subscription_type = db.Column(db.String(10), default='Monthly')  # Monthly, Yearly
-    default_payment_method_id = db.Column(db.Integer, db.ForeignKey('payment_method.id'), nullable=True)
+    
+    # ✅ Add use_alter=True to resolve circular dependency
+    default_payment_method_id = db.Column(
+        db.Integer,
+        db.ForeignKey('payment_method.id', use_alter=True),
+        nullable=True
+    )
 
     def __repr__(self):
         return f"<User {self.email}, Subscription: {self.subscription_status}>"
