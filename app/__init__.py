@@ -26,6 +26,9 @@ def create_app():
     from app.routes.sim_card import sim_card_bp  # Import SIM card routes
     from app.routes.device_groups import device_groups_bp
     from app.routes.ota_update import ota_bp
+    from app.routes.subscription import subscription_bp
+    from app.routes.stripe_routes import stripe_bp
+
 
 
 
@@ -37,6 +40,9 @@ def create_app():
     app.register_blueprint(sim_card_bp, url_prefix="")  # No prefix needed
     app.register_blueprint(device_groups_bp)
     app.register_blueprint(ota_bp)
+    app.register_blueprint(subscription_bp)
+    app.register_blueprint(stripe_bp)
+
 
 
 
