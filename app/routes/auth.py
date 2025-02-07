@@ -43,6 +43,10 @@ def login():
             "role": user.role
         }
     )
+
+    print("User found:", user is not None)
+    print("Password match:", check_password_hash(user.password_hash, data["password"]))
+
     return jsonify({"token": token, "role": user.role})
 
 

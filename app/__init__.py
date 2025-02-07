@@ -1,12 +1,16 @@
 from flask import Flask, request
 from .config import Config
 from .extensions import db, migrate, jwt
+from flask_cors import CORS, cross_origin
+
 
 
 def create_app():
     app = Flask(__name__, subdomain_matching=True)
     app.config.from_object(Config)
     app.config['SERVER_NAME'] = 'localhost:5000'
+    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
 
     db.init_app(app)
     migrate.init_app(app, db)

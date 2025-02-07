@@ -5,6 +5,8 @@ from app.models.app_model import App
 from app.models.user_app import UserApp
 from app.utils.auth_helpers import admin_required  # Ensure only admin access
 from werkzeug.security import generate_password_hash
+from app.models import Account  # Ensure you import the correct model
+
 
 
 admin_bp = Blueprint('admin', __name__)
@@ -157,3 +159,18 @@ def update_user(user_id):
 
     db.session.commit()
     return jsonify({"message": f"User {user.email} updated successfully"}), 200
+
+
+
+@admin_bp.route('/accounts', methods=['GET'])
+@admin_required
+def get_all_accounts():
+    """Get a list of all accounts in the system."""
+    accounts = Account.query.all()  # Use the correct model name
+
+    account_list = [
+        {"id": acc.id, "name": acc.name, "created_at": acc.created_at}
+        for acc in accounts
+    ]
+
+    return jsonify(account_list), 200
