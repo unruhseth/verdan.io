@@ -1,0 +1,1 @@
+app: {name: "inventory", title: "Inventory Management", description: "Inventory tracking system", models: [{name: "Item"}]}

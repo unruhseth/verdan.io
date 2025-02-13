@@ -1,0 +1,58 @@
+from app.extensions import db
+from datetime import datetime
+from uuid import uuid4
+from sqlalchemy.dialects.postgresql import UUID, ENUM, JSONB
+
+{% for model in models %}
+class {{ model.name }}(db.Model):
+    """{{ model.description if model.description else model.name + ' model' }}"""
+    __tablename__ = '{{ model.name.lower() }}s_{{ "{{ account_id }}" }}'
+    __table_args__ = {"extend_existing": True}
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    account_id = db.Column(db.Integer, nullable=False, index=True)
+    {% for field in model.fields %}
+    {% if field.type == 'string' %}
+    {{ field.name }} = db.Column(db.String({{ field.length|default(255) }}), nullable={{ field.nullable|default(False) }})
+    {% elif field.type == 'text' %}
+    {{ field.name }} = db.Column(db.Text, nullable={{ field.nullable|default(False) }})
+    {% elif field.type == 'enum' %}
+    {{ field.name }} = db.Column(ENUM({% for value in field.values %}'{{ value }}'{% if not loop.last %}, {% endif %}{% endfor %}, name='{{ field.name }}_enum', create_type=True))
+    {% elif field.type == 'json' %}
+    {{ field.name }} = db.Column(JSONB, nullable={{ field.nullable|default(False) }})
+    {% elif field.type == 'datetime' %}
+    {{ field.name }} = db.Column(db.DateTime, default=datetime.utcnow, nullable={{ field.nullable|default(False) }})
+    {% elif field.type == 'boolean' %}
+    {{ field.name }} = db.Column(db.Boolean, default={{ field.default|default(False) }}, nullable={{ field.nullable|default(False) }})
+    {% elif field.type == 'integer' %}
+    {{ field.name }} = db.Column(db.Integer, nullable={{ field.nullable|default(False) }})
+    {% elif field.type == 'float' %}
+    {{ field.name }} = db.Column(db.Float, nullable={{ field.nullable|default(False) }})
+    {% endif %}
+    {% endfor %}
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        """Convert model to dictionary."""
+        return {
+            'id': str(self.id),
+            'account_id': self.account_id,
+            {% for field in model.fields %}
+            '{{ field.name }}': self.{{ field.name }},
+            {% endfor %}
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
+        }
+
+{% endfor %}
+
+def create_app_tables(account_id):
+    """Create the table models for a specific account."""
+    tables = {}
+    {% for model in models %}
+    class Dynamic{{ model.name }}({{ model.name }}):
+        __tablename__ = f"{{ model.name.lower() }}s_{account_id}"
+    tables[f"{{ model.name.lower() }}s_{account_id}"] = Dynamic{{ model.name }}
+    {% endfor %}
+    return tables 

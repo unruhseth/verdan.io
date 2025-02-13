@@ -1,0 +1,86 @@
+from .models import create_app_tables
+from app.extensions import db
+from typing import Optional, Tuple, List, Dict, Any
+
+
+class {{ app_name.title().replace('_', '') }}Service:
+    """Service class for {{ app_name }} business logic"""
+    
+    @staticmethod
+    def get_tables(account_id: int) -> Dict[str, Any]:
+        """Get the table models for this account"""
+        return create_app_tables(account_id)
+    
+    {% for model in models %}
+    @staticmethod
+    def create_{{ model.name.lower() }}(account_id: int, data: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
+        """Create a new {{ model.name.lower() }}"""
+        try:
+            tables = create_app_tables(account_id)
+            Model = tables[f"{{ model.name.lower() }}s_{account_id}"]
+            
+            item = Model(account_id=account_id, **data)
+            db.session.add(item)
+            db.session.commit()
+            
+            return True, item.to_dict()
+        except Exception as e:
+            db.session.rollback()
+            return False, {"error": str(e)}
+    
+    @staticmethod
+    def get_{{ model.name.lower() }}(account_id: int, item_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific {{ model.name.lower() }}"""
+        tables = create_app_tables(account_id)
+        Model = tables[f"{{ model.name.lower() }}s_{account_id}"]
+        
+        item = Model.query.filter_by(id=item_id, account_id=account_id).first()
+        return item.to_dict() if item else None
+    
+    @staticmethod
+    def list_{{ model.name.lower() }}s(account_id: int) -> List[Dict[str, Any]]:
+        """List all {{ model.name.lower() }}s for an account"""
+        tables = create_app_tables(account_id)
+        Model = tables[f"{{ model.name.lower() }}s_{account_id}"]
+        
+        items = Model.query.filter_by(account_id=account_id).all()
+        return [item.to_dict() for item in items]
+    
+    @staticmethod
+    def update_{{ model.name.lower() }}(account_id: int, item_id: str, data: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
+        """Update a {{ model.name.lower() }}"""
+        try:
+            tables = create_app_tables(account_id)
+            Model = tables[f"{{ model.name.lower() }}s_{account_id}"]
+            
+            item = Model.query.filter_by(id=item_id, account_id=account_id).first()
+            if not item:
+                return False, {"error": "Item not found"}
+            
+            for key, value in data.items():
+                setattr(item, key, value)
+            
+            db.session.commit()
+            return True, item.to_dict()
+        except Exception as e:
+            db.session.rollback()
+            return False, {"error": str(e)}
+    
+    @staticmethod
+    def delete_{{ model.name.lower() }}(account_id: int, item_id: str) -> Tuple[bool, str]:
+        """Delete a {{ model.name.lower() }}"""
+        try:
+            tables = create_app_tables(account_id)
+            Model = tables[f"{{ model.name.lower() }}s_{account_id}"]
+            
+            item = Model.query.filter_by(id=item_id, account_id=account_id).first()
+            if not item:
+                return False, "Item not found"
+            
+            db.session.delete(item)
+            db.session.commit()
+            return True, "Item deleted successfully"
+        except Exception as e:
+            db.session.rollback()
+            return False, str(e)}
+    {% endfor %} 

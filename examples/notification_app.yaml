@@ -1,0 +1,201 @@
+app:
+  name: notification
+  title: "Notification Center"
+  description: "Notification management app for Verdan"
+  
+  # Pricing information
+  pricing:
+    monthly: 29.99
+    yearly: 299.99
+
+  # Backend configuration
+  models:
+    - name: Notification
+      description: "Notification model for managing system notifications"
+      fields:
+        - name: title
+          type: string
+          length: 255
+          nullable: false
+        - name: message
+          type: text
+          nullable: false
+        - name: type
+          type: enum
+          values: [INFO, WARNING, ERROR, SUCCESS]
+          nullable: false
+        - name: status
+          type: enum
+          values: [UNREAD, READ, ARCHIVED]
+          nullable: false
+        - name: metadata
+          type: json
+          nullable: true
+        - name: read_at
+          type: datetime
+          nullable: true
+        - name: expires_at
+          type: datetime
+          nullable: true
+    
+    - name: NotificationPreference
+      description: "User preferences for notifications"
+      fields:
+        - name: user_id
+          type: integer
+          nullable: false
+        - name: email_enabled
+          type: boolean
+          default: true
+        - name: sms_enabled
+          type: boolean
+          default: false
+        - name: push_enabled
+          type: boolean
+          default: true
+        - name: quiet_hours_start
+          type: string
+          nullable: true
+        - name: quiet_hours_end
+          type: string
+          nullable: true
+        - name: preferences
+          type: json
+          nullable: true
+
+  endpoints:
+    - path: "/notifications"
+      name: list_notifications
+      methods: ["GET"]
+      model: Notification
+      description: "List all notifications"
+      auth_required: true
+
+    - path: "/notifications/{id}"
+      name: get_notification
+      methods: ["GET"]
+      model: Notification
+      description: "Get a specific notification"
+      auth_required: true
+
+    - path: "/notifications"
+      name: create_notification
+      methods: ["POST"]
+      model: Notification
+      description: "Create a new notification"
+      auth_required: true
+
+    - path: "/notifications/{id}"
+      name: update_notification
+      methods: ["PUT"]
+      model: Notification
+      description: "Update a notification"
+      auth_required: true
+
+    - path: "/notifications/{id}"
+      name: delete_notification
+      methods: ["DELETE"]
+      model: Notification
+      description: "Delete a notification"
+      auth_required: true
+
+    - path: "/notifications/{id}/mark-read"
+      name: mark_notification_read
+      methods: ["POST"]
+      model: Notification
+      description: "Mark a notification as read"
+      auth_required: true
+
+    - path: "/preferences"
+      name: get_preferences
+      methods: ["GET"]
+      model: NotificationPreference
+      description: "Get notification preferences"
+      auth_required: true
+
+    - path: "/preferences"
+      name: update_preferences
+      methods: ["PUT"]
+      model: NotificationPreference
+      description: "Update notification preferences"
+      auth_required: true
+
+  # Frontend configuration
+  frontend:
+    theme:
+      primary_color: "#1890ff"
+      secondary_color: "#52c41a"
+      error_color: "#f5222d"
+      warning_color: "#faad14"
+      success_color: "#52c41a"
+      info_color: "#1890ff"
+
+    dashboard:
+      widgets:
+        - type: "stats"
+          title: "Notification Stats"
+          data:
+            - label: "Unread"
+              value: "notifications.filter(n => n.status === 'UNREAD').length"
+              color: "warning"
+            - label: "Total"
+              value: "notifications.length"
+              color: "info"
+
+        - type: "chart"
+          title: "Notifications by Type"
+          type: "pie"
+          data: "notifications.groupBy('type')"
+
+        - type: "timeline"
+          title: "Recent Notifications"
+          data: "notifications.orderBy('created_at').limit(5)"
+
+    components:
+      - name: "NotificationList"
+        type: "list"
+        props:
+          itemLayout: "horizontal"
+          pagination: true
+          search: true
+          filters:
+            - field: "type"
+              label: "Type"
+            - field: "status"
+              label: "Status"
+
+      - name: "PreferencesForm"
+        type: "form"
+        props:
+          layout: "vertical"
+          submitText: "Save Preferences"
+
+    settings:
+      - name: "notifications"
+        label: "Notification Settings"
+        description: "Configure how you receive notifications"
+        fields:
+          - name: "email_enabled"
+            type: "switch"
+            label: "Email Notifications"
+            default: true
+          - name: "push_enabled"
+            type: "switch"
+            label: "Push Notifications"
+            default: true
+          - name: "quiet_hours"
+            type: "timeRange"
+            label: "Quiet Hours"
+
+      - name: "advanced"
+        label: "Advanced Settings"
+        description: "Advanced notification configuration"
+        fields:
+          - name: "retention_days"
+            type: "number"
+            label: "Retention Period (days)"
+            default: 30
+          - name: "batch_notifications"
+            type: "switch"
+            label: "Batch Notifications"
+            default: false 

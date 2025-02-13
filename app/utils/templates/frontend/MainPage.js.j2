@@ -1,0 +1,201 @@
+import React from 'react';
+import { useParams } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { Card, Button, Table, Modal, Form, message } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { api } from '../../../utils/api';
+import './{{ app_name }}.css';
+
+const {{ app_name.title() }}Page = () => {
+    const { accountId } = useParams();
+    const queryClient = useQueryClient();
+    const [form] = Form.useForm();
+    const [modalVisible, setModalVisible] = React.useState(false);
+    const [editingItem, setEditingItem] = React.useState(null);
+
+    // Fetch data
+    {% for model in models %}
+    const { data: {{ model.name.lower() }}s, isLoading: loading{{ model.name }} } = useQuery(
+        ['{{ model.name.lower() }}s', accountId],
+        () => api.get(`/{{ app_name }}/{{ model.name.lower() }}s?account_id=${accountId}`).then(res => res.data)
+    );
+    {% endfor %}
+
+    // Mutations
+    {% for model in models %}
+    const create{{ model.name }} = useMutation(
+        (data) => api.post(`/{{ app_name }}/{{ model.name.lower() }}s`, { ...data, account_id: accountId }),
+        {
+            onSuccess: () => {
+                queryClient.invalidateQueries(['{{ model.name.lower() }}s', accountId]);
+                message.success('{{ model.name }} created successfully');
+                setModalVisible(false);
+                form.resetFields();
+            },
+            onError: (error) => {
+                message.error(error.response?.data?.error || 'Failed to create {{ model.name.lower() }}');
+            }
+        }
+    );
+
+    const update{{ model.name }} = useMutation(
+        ({ id, data }) => api.put(`/{{ app_name }}/{{ model.name.lower() }}s/${id}`, { ...data, account_id: accountId }),
+        {
+            onSuccess: () => {
+                queryClient.invalidateQueries(['{{ model.name.lower() }}s', accountId]);
+                message.success('{{ model.name }} updated successfully');
+                setModalVisible(false);
+                setEditingItem(null);
+                form.resetFields();
+            },
+            onError: (error) => {
+                message.error(error.response?.data?.error || 'Failed to update {{ model.name.lower() }}');
+            }
+        }
+    );
+
+    const delete{{ model.name }} = useMutation(
+        (id) => api.delete(`/{{ app_name }}/{{ model.name.lower() }}s/${id}`),
+        {
+            onSuccess: () => {
+                queryClient.invalidateQueries(['{{ model.name.lower() }}s', accountId]);
+                message.success('{{ model.name }} deleted successfully');
+            },
+            onError: (error) => {
+                message.error(error.response?.data?.error || 'Failed to delete {{ model.name.lower() }}');
+            }
+        }
+    );
+    {% endfor %}
+
+    // Table columns
+    {% for model in models %}
+    const {{ model.name.lower() }}Columns = [
+        {% for field in model.fields %}
+        {
+            title: '{{ field.name.title() }}',
+            dataIndex: '{{ field.name }}',
+            key: '{{ field.name }}',
+            {% if field.type == 'datetime' %}
+            render: (text) => new Date(text).toLocaleString(),
+            {% elif field.type == 'json' %}
+            render: (text) => JSON.stringify(text, null, 2),
+            {% endif %}
+        },
+        {% endfor %}
+        {
+            title: 'Actions',
+            key: 'actions',
+            render: (_, record) => (
+                <span>
+                    <Button
+                        type="link"
+                        icon={<EditOutlined />}
+                        onClick={() => {
+                            setEditingItem(record);
+                            form.setFieldsValue(record);
+                            setModalVisible(true);
+                        }}
+                    />
+                    <Button
+                        type="link"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() => delete{{ model.name }}.mutate(record.id)}
+                    />
+                </span>
+            ),
+        },
+    ];
+    {% endfor %}
+
+    const handleSubmit = (values) => {
+        if (editingItem) {
+            update{{ models[0].name }}.mutate({ id: editingItem.id, data: values });
+        } else {
+            create{{ models[0].name }}.mutate(values);
+        }
+    };
+
+    return (
+        <div className="{{ app_name }}-page">
+            <h1>{{ app_title }}</h1>
+            
+            {% for model in models %}
+            <Card 
+                title="{{ model.name }}s"
+                extra={
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => {
+                            setEditingItem(null);
+                            form.resetFields();
+                            setModalVisible(true);
+                        }}
+                    >
+                        Add {{ model.name }}
+                    </Button>
+                }
+            >
+                <Table
+                    columns={{ model.name.lower() }}Columns}
+                    dataSource={{ model.name.lower() }}s}
+                    loading={loading{{ model.name }}}
+                    rowKey="id"
+                />
+            </Card>
+            {% endfor %}
+
+            <Modal
+                title={editingItem ? 'Edit {{ models[0].name }}' : 'Create {{ models[0].name }}'}
+                open={modalVisible}
+                onCancel={() => {
+                    setModalVisible(false);
+                    setEditingItem(null);
+                    form.resetFields();
+                }}
+                footer={null}
+            >
+                <Form
+                    form={form}
+                    onFinish={handleSubmit}
+                    layout="vertical"
+                >
+                    {% for field in models[0].fields %}
+                    <Form.Item
+                        name="{{ field.name }}"
+                        label="{{ field.name.title() }}"
+                        {% if not field.nullable %}rules={[{ required: true }]}{% endif %}
+                    >
+                        {% if field.type == 'string' or field.type == 'text' %}
+                        <Input />
+                        {% elif field.type == 'enum' %}
+                        <Select>
+                            {% for value in field.values %}
+                            <Select.Option value="{{ value }}">{{ value }}</Select.Option>
+                            {% endfor %}
+                        </Select>
+                        {% elif field.type == 'boolean' %}
+                        <Switch defaultChecked={{{ field.default|default(false) }}} />
+                        {% elif field.type == 'datetime' %}
+                        <DatePicker showTime />
+                        {% elif field.type == 'json' %}
+                        <Input.TextArea rows={4} />
+                        {% else %}
+                        <Input />
+                        {% endif %}
+                    </Form.Item>
+                    {% endfor %}
+                    <Form.Item>
+                        <Button type="primary" htmlType="submit">
+                            {editingItem ? 'Update' : 'Create'}
+                        </Button>
+                    </Form.Item>
+                </Form>
+            </Modal>
+        </div>
+    );
+};
+
+export default {{ app_name.title() }}Page; 

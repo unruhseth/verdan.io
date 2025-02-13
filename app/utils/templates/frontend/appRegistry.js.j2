@@ -1,0 +1,38 @@
+// App Registry - Auto-generated, do not edit manually
+import { lazy } from 'react';
+
+{% for app in apps %}
+const {{ app.name.title() }}Page = lazy(() => import('../pages/apps/{{ app.name }}/{{ app.name.title() }}Page'));
+const {{ app.name.title() }}Dashboard = lazy(() => import('../pages/apps/{{ app.name }}/{{ app.name.title() }}Dashboard'));
+const {{ app.name.title() }}Settings = lazy(() => import('../pages/apps/{{ app.name }}/{{ app.name.title() }}Settings'));
+{% endfor %}
+
+export const appConfigs = {
+    {% for app in apps %}
+    '{{ app.name }}': {
+        id: '{{ app.name }}',
+        name: '{{ app.title }}',
+        description: '{{ app.description }}',
+        icon_url: require('../assets/icons/{{ app.name }}.svg'),
+        monthly_price: {{ app.pricing.monthly|default(0) }},
+        yearly_price: {{ app.pricing.yearly|default(0) }},
+        routes: {
+            main: {{ app.name.title() }}Page,
+            dashboard: {{ app.name.title() }}Dashboard,
+            settings: {{ app.name.title() }}Settings,
+        }
+    },
+    {% endfor %}
+};
+
+export const APP_ID_MAP = {
+    {% for app in apps %}
+    '{{ app.name }}': '{{ app.name }}',
+    {% endfor %}
+};
+
+export const APP_NAME_TO_ID = {
+    {% for app in apps %}
+    '{{ app.title }}': '{{ app.name }}',
+    {% endfor %}
+}; 

@@ -1,19 +1,30 @@
 from app.extensions import db
+from datetime import datetime
+from sqlalchemy.dialects.postgresql import UUID
+from uuid import uuid4
 
 class UserApp(db.Model):
-    __tablename__ = "user_apps"
+    """Model to track which apps are installed for which accounts"""
+    __tablename__ = 'user_apps'
 
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    app_id = db.Column(db.Integer, db.ForeignKey("apps.id"), nullable=False)
-    access_level = db.Column(db.String(50), default="read")  # Options: read, write, admin
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    app_name = db.Column(db.String(255), nullable=False)
+    is_installed = db.Column(db.Boolean, default=False)
+    installed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    uninstalled_at = db.Column(db.DateTime, nullable=True)  # Track when app was uninstalled
 
-    user = db.relationship("User", back_populates="user_apps")
-    app = db.relationship('App', backref=db.backref('installed_by_users', lazy=True))
+    # Add relationship to Account model
+    account = db.relationship('Account', backref=db.backref('installed_apps', lazy=True))
 
-    def to_dict(self):
-        """Converts user-app relationship to dictionary for API responses."""
-        return {"user_id": self.user_id, "app_id": self.app_id, "app_name": self.app.name}
+    __table_args__ = (
+        db.UniqueConstraint('account_id', 'app_name', name='uix_account_app'),
+    )
 
-    def __repr__(self):
-        return f"<UserApp user_id={self.user_id} app_id={self.app_id} access={self.access_level}>"
+#     def to_dict(self):
+#         """Converts user-app relationship to dictionary for API responses."""
+#         return {"user_id": self.user_id, "app_id": self.app_id, "app_name": self.app.name}
+
+#     def __repr__(self):
+#         return f"<UserApp user_id={self.user_id} app_id={self.app_id} access={self.access_level}>"

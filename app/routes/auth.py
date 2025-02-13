@@ -3,11 +3,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
 from app.models.user import User
 from app.extensions import db
+from flask_cors import cross_origin
+
 
 auth_bp = Blueprint("auth", __name__)
 
 # User Registration
 @auth_bp.route("/register", methods=["POST"])
+@cross_origin()
 def register():
     data = request.json
     existing_user = User.query.filter_by(email=data["email"]).first()
@@ -29,42 +32,53 @@ def register():
 
 # User Login
 @auth_bp.route("/login", methods=["POST"])
+@cross_origin()
 def login():
-    data = request.json
-    user = User.query.filter_by(email=data["email"]).first()
+    try:
+        data = request.json
+        if not data or "email" not in data or "password" not in data:
+            return jsonify({"error": "Email and password are required"}), 400
 
-    if not user or not check_password_hash(user.password_hash, data["password"]):
-        return jsonify({"error": "Invalid credentials"}), 401
+        user = User.query.filter_by(email=data["email"]).first()
 
-    token = create_access_token(
-        identity=str(user.id),  # Make sure this is a string
-        additional_claims={
+        if not user or not check_password_hash(user.password_hash, data["password"]):
+            return jsonify({"error": "Invalid credentials"}), 401
+
+        token = create_access_token(
+            identity=str(user.id),
+            additional_claims={
+                "account_id": user.account_id,
+                "role": user.role
+            }
+        )
+
+        return jsonify({
+            "token": token,
+            "role": user.role,
             "account_id": user.account_id,
-            "role": user.role
-        }
-    )
-
-    print("User found:", user is not None)
-    print("Password match:", check_password_hash(user.password_hash, data["password"]))
-
-    return jsonify({"token": token, "role": user.role})
-
+            "name": user.name,
+            "email": user.email
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @auth_bp.route("/protected", methods=["GET"])
+@cross_origin()
 @jwt_required()
 def protected():
-    from flask_jwt_extended import get_jwt_identity, get_jwt
-    user_id_str = get_jwt_identity()     # This is now a string
-    user_id = int(user_id_str)           # Convert to int if needed
+    try:
+        user_id_str = get_jwt_identity()
+        user_id = int(user_id_str)
+        claims = get_jwt()
+        account_id = claims["account_id"]
+        role = claims["role"]
 
-    claims = get_jwt()
-    account_id = claims["account_id"]
-    role = claims["role"]
-
-    return {
-        "message": "Welcome!",
-        "user_id": user_id,
-        "account_id": account_id,
-        "role": role
-    }, 200
+        return jsonify({
+            "message": "Welcome!",
+            "user_id": user_id,
+            "account_id": account_id,
+            "role": role
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 

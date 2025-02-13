@@ -5,6 +5,16 @@ from flask import current_app
 
 from alembic import context
 
+# Import all models to ensure they are registered
+from app.models.account import Account
+from app.models.user import User
+from app.models.app_model import App
+from app.models.user_app import UserApp
+from app.apps.multi_control.models import (
+    Field, Equipment, Zone, IrrigationPlan,
+    Alert, Log, Firmware
+)
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -37,7 +47,7 @@ def get_engine_url():
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 config.set_main_option('sqlalchemy.url', get_engine_url())
-target_db = current_app.extensions['migrate'].db
+target_metadata = current_app.extensions['migrate'].db.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -46,9 +56,9 @@ target_db = current_app.extensions['migrate'].db
 
 
 def get_metadata():
-    if hasattr(target_db, 'metadatas'):
-        return target_db.metadatas[None]
-    return target_db.metadata
+    if hasattr(current_app.extensions['migrate'].db, 'metadatas'):
+        return current_app.extensions['migrate'].db.metadatas[None]
+    return current_app.extensions['migrate'].db.metadata
 
 
 def run_migrations_offline():
@@ -65,7 +75,10 @@ def run_migrations_offline():
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url, target_metadata=get_metadata(), literal_binds=True
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
     )
 
     with context.begin_transaction():
@@ -99,7 +112,7 @@ def run_migrations_online():
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=get_metadata(),
+            target_metadata=target_metadata,
             **conf_args
         )
 
